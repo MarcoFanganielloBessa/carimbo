@@ -334,10 +334,18 @@ class Vault:
 
 
 def init_vault(path: Path, timezone: str = "UTC") -> Path:
+    try:
+        ZoneInfo(timezone)
+    except (ValueError, KeyError):  # ZoneInfoNotFoundError is a KeyError
+        raise CarimboError(f"unknown timezone: {timezone!r} (use an IANA name such as America/Sao_Paulo or Europe/Lisbon)")
     path = path.expanduser()
     path.mkdir(parents=True, exist_ok=True)
     if not (path / ".git").exists():
         subprocess.run(["git", "init", "-q", str(path)], check=True)
+    # A fresh machine or a server may have no git identity; without one every stamp would fail to commit.
+    if subprocess.run(["git", "-C", str(path), "var", "GIT_COMMITTER_IDENT"], capture_output=True).returncode:
+        subprocess.run(["git", "-C", str(path), "config", "user.name", "carimbo"], check=True)
+        subprocess.run(["git", "-C", str(path), "config", "user.email", "carimbo@localhost"], check=True)
     files = {
         "carimbo.toml": TEMPLATE_TOML.replace("{tz}", timezone),
         "agents/README.md": AGENTS_README,
