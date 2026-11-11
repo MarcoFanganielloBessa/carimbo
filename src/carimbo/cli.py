@@ -74,9 +74,9 @@ def cmd_hook(v: Vault, which: str) -> None:
 def cmd_check(v: Vault, files: list[str], staged: bool) -> int:
     root = v.root
     if staged:
-        out = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only", "--diff-filter=ACM"],
-                             capture_output=True, text=True).stdout
-        files = [str(root / f) for f in out.split()]
+        out = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--name-only", "-z", "--diff-filter=ACM"],
+                             capture_output=True, text=True).stdout  # -z: names with spaces or accents come unquoted
+        files = [str(root / f) for f in out.split("\0") if f]
     bad = 0
     for f in map(Path, files):
         rel = f.relative_to(root) if f.is_absolute() and f.is_relative_to(root) else f

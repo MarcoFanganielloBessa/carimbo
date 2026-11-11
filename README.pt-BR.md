@@ -7,9 +7,85 @@
 
 <p align="center"><a href="README.md">Read in English</a></p>
 
-O **carimbo** é uma memória compartilhada para times de agentes de IA que guarda só o que foi decidido. Cada decisão é uma nota em Markdown num repositório git, com quem disse e quando. Quando a decisão muda, a versão nova é carimbada e a antiga vai para `archive/`. Toda sessão de agente começa do mesmo `INDEX.md`, e um hook avisa cada sessão do que outra carimbou enquanto ela trabalhava.
+O **carimbo** é uma memória compartilhada para times de agentes de IA que guarda só o que foi decidido: uma nota em Markdown por decisão, numa pasta git, com quem disse e quando. Toda sessão de agente começa das decisões atuais e fica sabendo quando outra sessão muda alguma.
 
-É um pacote Python pequeno, sem dependências. As notas são Markdown puro, que abre no Obsidian, e o git cuida do histórico e da sincronização.
+## Começar
+
+Abra o Claude Code, o Codex, o Cursor ou qualquer agente que rode comandos no seu computador, na pasta de um projeto em que você trabalha, e cole:
+
+```text
+Instale o carimbo para mim. Baixe https://raw.githubusercontent.com/MarcoFanganielloBessa/carimbo/main/docs/agent-setup.md e siga passo a passo. Fale comigo em português.
+```
+
+O agente faz quatro perguntas numa mensagem só (onde fica o cofre, o seu fuso, qual pasta de projeto ligar e se você quer um remoto privado). Depois instala o carimbo com `uv` e cria o cofre. Antes de mexer nas configurações do seu agente, mostra cada mudança e espera o seu ok. Termina com um carimbo de teste e umas linhas sobre como vai trabalhar dali em diante. O arquivo que ele segue é o [docs/agent-setup.md](docs/agent-setup.md), se quiser ler antes.
+
+Prefere fazer à mão: [Instalação manual](#instalação-manual).
+
+## Como trabalhar no dia a dia
+
+Você conversa como sempre. O agente carimba o que foi decidido e consulta quando você pergunta.
+
+| Você diz | O agente |
+|---|---|
+| "Decidido: a venda abre sexta às 10h." | `carimbo set acme.launch.date "…" --source "você, 25/11"`, mais `--discarded` quando você diz o que perdeu |
+| "Mudamos para sábado." | Carimba a mesma chave de novo; a versão de sexta vai para `archive/` |
+| "Pergunta em aberto: subimos a verba de anúncio? Decido depois do primeiro relatório." | `carimbo set acme.ads.budget "…" --type pending` |
+| "Sobe para 400 por dia." | Carimba `acme.ads.budget` de novo, agora como decisão |
+| "Esquece a lista de imprensa, não vamos fazer." | `carimbo end acme.launch.press "não vamos fazer"` |
+| "O que a gente decidiu sobre o lançamento?" | `carimbo show acme.launch.` e, para as mudanças no tempo, `carimbo history acme.launch.date` |
+
+Uma sessão curta, numa pasta ligada ao projeto `acme`:
+
+> **Você:** A Ana confirmou na call: a venda abre sexta 04/12 às 10h, não quinta, porque quinta bate com o outro festival.
+>
+> **Agente:** Carimbei `acme.launch.date`: "Venda abre sexta 04/12 às 10h." Fonte: Ana, call de lançamento, 25/11. Descartado: quinta 03/12, bate com o outro festival. A versão de quinta está no arquivo.
+>
+> **Você:** A gente sobe a verba de anúncio? Agora não, depois do primeiro relatório de vendas.
+>
+> **Agente:** Carimbei como pergunta esperando você: `acme.ads.budget`.
+
+Enquanto isso, outra sessão do Claude Code, a que está fazendo a landing page, recebe isto antes da próxima mensagem, e você vê um aviso de uma linha (`carimbo: 1 change(s) from another session`):
+
+```
+Changed in the shared memory since your last message (another session stamped it):
+- `acme.launch.date` (2026-11-25): Venda abre sexta 04/12 às 10h. · source: Ana, call de lançamento, 25/11
+```
+
+## Onde funciona
+
+O carimbo é um programa de linha de comando mais dois hooks. Funciona em qualquer agente que rode comandos de shell na máquina onde está o cofre.
+
+### Claude Code no terminal (CLI)
+
+Instale ([quickstart](https://code.claude.com/docs/en/quickstart)), rode `claude` na pasta do projeto e cole o prompt. A instalação põe dois hooks no `~/.claude/settings.json`, que vale para todos os seus projetos ([hooks](https://code.claude.com/docs/en/hooks)). Depois, abra uma sessão nova para os hooks carregarem.
+
+### Claude Code Desktop (a aba Code do app Claude)
+
+Abra uma sessão local, escolha a pasta do projeto na linha embaixo da caixa de mensagem ([Desktop](https://code.claude.com/docs/en/desktop)) e cole o prompt. A documentação do Desktop diz que a chave `env` do `~/.claude/settings.json` vale para as sessões locais. Não achamos página que diga que o Desktop roda os hooks desse arquivo do mesmo jeito que o CLI, então confira uma vez: abra uma sessão nova na pasta ligada e pergunte "o que está decidido aqui?". A instalação grava os hooks com caminho absoluto, porque app de desktop nem sempre carrega o `PATH` do seu shell.
+
+### VS Code e JetBrains
+
+No VS Code, instale a extensão Claude Code (`anthropic.claude-code`), abra a pasta do projeto e cole o prompt no painel do Claude Code. A documentação dela diz que o `~/.claude/settings.json`, com os hooks, é o mesmo da extensão e do CLI ([VS Code](https://code.claude.com/docs/en/vs-code)). O plugin do JetBrains roda o `claude` no terminal da IDE, então vale tudo o que está acima para o CLI ([JetBrains](https://code.claude.com/docs/en/jetbrains)).
+
+### Claude Code na web (claude.ai/code)
+
+Não funciona hoje. As sessões rodam numa máquina na nuvem que clona o seu repositório do GitHub e não enxerga o cofre do seu computador ([documentação](https://code.claude.com/docs/en/claude-code-on-the-web)). A instalação detecta isso (`CLAUDE_CODE_REMOTE=true`) e para.
+
+### App Claude ou claude.ai, sem o Claude Code
+
+Não funciona. O chat não roda comando de shell nem hook, e o carimbo não tem servidor MCP.
+
+### Codex CLI
+
+Instale ([openai/codex](https://github.com/openai/codex)), rode `codex` na pasta do projeto e cole o prompt. O Codex lê o `AGENTS.md` de `~/.codex` e da raiz do projeto até a pasta de trabalho ([AGENTS.md](https://developers.openai.com/codex/guides/agents-md)); a instalação grava as regras ali, e o agente roda `carimbo show` no começo de cada tarefa. O Codex também tem hooks `SessionStart` e `UserPromptSubmit` no mesmo formato de saída do Claude Code ([hooks](https://developers.openai.com/codex/hooks)), mas o carimbo ainda não foi testado com eles, e a instalação não mexe neles.
+
+### Cursor
+
+Abra o projeto e cole o prompt no chat do agente. O Cursor lê o `AGENTS.md` da raiz do projeto ([rules](https://cursor.com/docs/context/rules)), e é ali que a instalação põe as regras. Os hooks do Cursor usam outro formato ([hooks](https://cursor.com/docs/agent/hooks)), que o carimbo não fala, e as mudanças de outras sessões só chegam quando o agente roda `carimbo show`.
+
+### Qualquer outro agente com shell
+
+Aider, um bot num servidor, seus scripts: as mesmas regras vão nas instruções ou no prompt de sistema dele. Veja [docs/other-agents.md](docs/other-agents.md).
 
 ## Por quê
 
@@ -21,6 +97,8 @@ Nasceu na [BOMA](https://www.instagram.com/weare_boma/), empresa de eventos de m
 
 ## Como funciona
 
+É um pacote Python pequeno, sem dependências. As notas são Markdown puro, que abre no Obsidian, e o git cuida do histórico e da sincronização.
+
 <p align="center"><img alt="sessões carimbam decisões, a versão antiga vai para o arquivo, o INDEX.md alimenta todas as sessões, um hook avisa o que mudou" src="assets/how-it-works.svg" width="100%"></p>
 
 - **Uma nota por chave.** `acme.launch.date` mora em `acme/decisions/launch-date.md`. Nunca existe uma segunda cópia para divergir.
@@ -31,7 +109,7 @@ Nasceu na [BOMA](https://www.instagram.com/weare_boma/), empresa de eventos de m
 - **Os hooks sincronizam as sessões.** Ao abrir, o agente recebe o estado atual do projeto dele. Antes de cada mensagem, recebe só o que outras sessões carimbaram desde a última.
 - **Dado pessoal é recusado.** E-mail, telefone e CPF são barrados na gravação e por um hook de pre-commit, porque o cofre vai para remotos, servidores e modelos.
 
-## Começar
+## Instalação manual
 
 ```bash
 uv tool install git+https://github.com/MarcoFanganielloBessa/carimbo   # ou: pipx install git+https://...
@@ -60,6 +138,8 @@ carimbo show acme.
 
 Com um remoto (`git -C ~/carimbo remote add origin …`), cada carimbo sobe sozinho. Para um cofre de verdade, use um repositório privado.
 
+Depois, ligue os agentes à mão: [docs/claude-code.md](docs/claude-code.md) para os hooks do Claude Code, [docs/other-agents.md](docs/other-agents.md) para o resto.
+
 ## Comandos
 
 | Comando | O que faz |
@@ -76,11 +156,9 @@ Com um remoto (`git -C ~/carimbo remote add origin …`), cada carimbo sobe sozi
 
 A chave é `projeto.tema.assunto`, em minúsculas. A primeira parte é a pasta do projeto no cofre.
 
-## Ligar nos agentes
+## Muitos agentes escrevendo
 
-- **Claude Code:** dois hooks no `settings.json`. [docs/claude-code.md](docs/claude-code.md)
-- **Codex, Cursor, OpenBot e qualquer agente com shell:** um bloco curto no `AGENTS.md` ou no prompt. [docs/other-agents.md](docs/other-agents.md)
-- **O arquivista:** com muitos agentes escrevendo, o que faz funcionar é cada página ter um dono só. Os agentes escrevem livre em `agents/<nome>/`; um agente arquivista promove o que importa com `carimbo set` e resolve contradição. O manual dele, pronto para colar: [docs/archivist.md](docs/archivist.md)
+Com um time de agentes escrevendo ao mesmo tempo, dê um dono só a cada página. Os agentes escrevem livre em `agents/<nome>/`; um agente arquivista promove o que importa com `carimbo set` e resolve contradição. O manual dele, pronto para colar: [docs/archivist.md](docs/archivist.md).
 
 O formato das notas e das pastas está em [docs/note-format.md](docs/note-format.md), e um cofre de exemplo em [examples/vault](examples/vault).
 

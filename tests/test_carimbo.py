@@ -148,6 +148,33 @@ class TestCli(Base):
         self.assertIn("acme/notes.md:1: email", out)
         self.assertNotIn("people", out)
 
+    def test_check_staged_names_with_spaces_and_accents(self):
+        f = self.v.root / "notes" / "reunião de lançamento.md"
+        f.parent.mkdir()
+        f.write_text("ligar para ana@example.com\n")
+        self.v.git("add", "-A")
+        code, out, _ = run("--vault", str(self.v.root), "check", "--staged")
+        self.assertEqual(code, 1)
+        self.assertIn("reunião de lançamento.md:1: email", out)
+
+    def test_init_refuses_unknown_timezone(self):
+        code, _, err = run("init", str(self.tmp / "tz"), "--timezone", "Sao Paulo")
+        self.assertEqual(code, 1)
+        self.assertIn("unknown timezone", err)
+        self.assertFalse((self.tmp / "tz").exists())
+
+    def test_init_without_git_identity(self):
+        home = Path(tempfile.mkdtemp())
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        env.update(HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"), GIT_CONFIG_NOSYSTEM="1",
+                   EMAIL="", PYTHONPATH=str(Path(__file__).resolve().parent.parent / "src"))
+        r = subprocess.run([sys.executable, "-m", "carimbo", "init", str(home / "v")], env=env,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = subprocess.run([sys.executable, "-m", "carimbo", "--vault", str(home / "v"), "set", "acme.x.y", "ok"],
+                           env=env, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
     def test_hooks(self):
         vault = str(self.v.root)
         self.v.stamp("set", "acme.launch.date", "Nov 16", session="A")
