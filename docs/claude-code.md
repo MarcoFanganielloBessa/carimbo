@@ -1,6 +1,6 @@
 # Claude Code
 
-Two hooks connect every Claude Code session to the vault.
+Two hooks connect every Claude Code session to the vault. The setup prompt in the [README](../README.md#quick-start) does everything on this page for you, after asking; this page is for doing it by hand.
 
 | Hook | Command | What the session receives |
 |---|---|---|
@@ -38,6 +38,8 @@ In `~/.claude/settings.json` (all projects) or `.claude/settings.json` (one repo
   }
 }
 ```
+
+Use the absolute path of `carimbo` (`command -v carimbo`) if Claude Code runs from a desktop app or an IDE, since those do not always load your shell's `PATH`. If the vault is not at `~/carimbo`, also add `"env": { "CARIMBO_VAULT": "/path/to/vault" }` to the same file, so `carimbo set` finds it inside every session.
 
 The hooks never block a session: a missing vault, bad input or a git error prints to stderr and exits 0.
 
