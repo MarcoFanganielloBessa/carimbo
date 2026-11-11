@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "carimbo"
+version = "0.1.0"
+description = "Decision memory for AI agent teams, in Markdown and git."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "BOMA" }]
+keywords = ["ai-agents", "memory", "claude-code", "markdown", "obsidian", "git", "decisions"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: POSIX",
+  "Environment :: Console",
+  "Topic :: Software Development",
+]
+dependencies = []
+
+[project.scripts]
+carimbo = "carimbo.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MarcoFanganielloBessa/carimbo"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/carimbo"]

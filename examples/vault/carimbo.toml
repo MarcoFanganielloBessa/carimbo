@@ -1,0 +1,11 @@
+# carimbo vault settings
+timezone = "America/Sao_Paulo"
+
+# Which project a coding session belongs to, by a folder name in its working directory.
+# The hooks only inject the state of that project.
+[projects]
+# "acme-web" = "acme"
+
+[privacy]
+# Regexes for addresses that are allowed in notes (for example your own system mailbox).
+allow = []
